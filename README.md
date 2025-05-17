@@ -1,5 +1,7 @@
 🌍 Climate Analysis Dashboard
-Overview 
+
+Overview
+
 The Climate Analysis Dashboard is a comprehensive web-based application designed to assist governments and environmental stakeholders in analyzing historical climate patterns, forecasting future climate trends, and generating actionable policy recommendations. Using SARIMA (Seasonal AutoRegressive Integrated Moving Average) models, the dashboard forecasts key variables like temperature and rainfall and links those insights to real-world policy suggestions.
 
 🔑 Key Features
