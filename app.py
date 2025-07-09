@@ -8,6 +8,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from pandas.tseries.offsets import DateOffset
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
+from folium import Map
+from folium.plugins import TimestampedGeoJson
 
 app = Flask(__name__)
 
@@ -24,33 +26,30 @@ def process_data(location):
     df_ts.interpolate(method='linear', inplace=True)
     return df_ts
 
-# Precompute forecasts (run once, e.g., at app startup)
 precomputed_forecasts = {}
-def precompute_forecasts(df):
-    for location in df['Location'].unique():
-        location_data = process_data(location)
-        mintemp_model = sm.tsa.statespace.SARIMAX(location_data['MinTemp'], order=(1, 0, 1), seasonal_order=(1, 1, 0, 52))
-        maxtemp_model = sm.tsa.statespace.SARIMAX(location_data['MaxTemp'], order=(1, 0, 1), seasonal_order=(1, 1, 1, 52))
-        rainfall_model = sm.tsa.statespace.SARIMAX(location_data['Rainfall'], order=(0, 0, 0), seasonal_order=(1, 1, 1, 52))
-        mintemp_fit = mintemp_model.fit(disp=False)
-        maxtemp_fit = maxtemp_model.fit(disp=False)
-        rainfall_fit = rainfall_model.fit(disp=False)
-        future_dates = [location_data.index[-1] + DateOffset(weeks=x) for x in range(1, 27)]
-        precomputed_forecasts[location] = pd.DataFrame({
-            'Date': future_dates,
-            'MinTemp_Forecast': mintemp_fit.forecast(steps=26),
-            'MaxTemp_Forecast': maxtemp_fit.forecast(steps=26),
-            'Rainfall_Forecast': rainfall_fit.forecast(steps=26)
-        })
-    return precomputed_forecasts
 
-# Load data and precompute at startup
-df = pd.read_csv('weatherAUS.csv')
-precomputed_forecasts = precompute_forecasts(df)
-
-# Simplified forecast function (no plotting for now)
 def sarima_forecast(location):
-    return precomputed_forecasts.get(location, pd.DataFrame())
+    if location in precomputed_forecasts:
+        return precomputed_forecasts[location]
+    
+    location_data = process_data(location)
+    mintemp_model = sm.tsa.statespace.SARIMAX(location_data['MinTemp'], order=(1, 0, 1), seasonal_order=(1, 1, 0, 52))
+    maxtemp_model = sm.tsa.statespace.SARIMAX(location_data['MaxTemp'], order=(1, 0, 1), seasonal_order=(1, 1, 1, 52))
+    rainfall_model = sm.tsa.statespace.SARIMAX(location_data['Rainfall'], order=(0, 0, 0), seasonal_order=(1, 1, 1, 52))
+    mintemp_fit = mintemp_model.fit(disp=False)
+    maxtemp_fit = maxtemp_model.fit(disp=False)
+    rainfall_fit = rainfall_model.fit(disp=False)
+
+    future_dates = [location_data.index[-1] + DateOffset(weeks=x) for x in range(1, 27)]
+    forecast_df = pd.DataFrame({
+        'Date': future_dates,
+        'MinTemp_Forecast': mintemp_fit.forecast(steps=26),
+        'MaxTemp_Forecast': maxtemp_fit.forecast(steps=26),
+        'Rainfall_Forecast': rainfall_fit.forecast(steps=26)
+    })
+
+    precomputed_forecasts[location] = forecast_df
+    return forecast_df
 
 
 
@@ -60,7 +59,7 @@ def sarima_forecast(location):
 def validate_sarima(location_data):
     train_data = location_data[:-52]  # Last year for testing
     test_data = location_data[-52:]   # 52 weeks
-    mintemp_model = sm.tsa.statespace.SARIMAX(train_data['MinTemp'], order=(1, 0, 1), seasonal_order=(1, 1, 0, 52))
+    mintemp_model = sm.tsa.statespace.SARIMAX(train_data['MinTemp'], order=(1, 0, 1), seasonal_order=(1, 0, 0, 52))
     mintemp_fit = mintemp_model.fit(disp=False)
     forecast = mintemp_fit.forecast(steps=52)
     mae = mean_absolute_error(test_data['MinTemp'], forecast)
@@ -69,18 +68,17 @@ def validate_sarima(location_data):
 # Update suggest_policies to use validation
 def suggest_policies(location, forecast_data, historical_data=None):
     policies = []
-    if historical_data is not None:
-        mae = validate_sarima(historical_data)
-        policies.append(f"Model Validation: SARIMA MAE = {mae:.2f}°C for {location}.")
-        if mae > 2.0:
-            policies.append(f"Note: MAE > 2.0°C suggests potential model refinement.")
+    #if historical_data is not None:
+     #   mae = validate_sarima(historical_data)
+      #  policies.append(f"Model Validation: SARIMA MAE = {mae:.2f}°C for {location}.")
+       # if mae > 2.0:
+        #    policies.append(f"Note: MAE > 2.0°C suggests potential model refinement.")
     if forecast_data['MaxTemp_Forecast'].mean() > 30:
         policies.append(f"Recommend energy conservation in {location} due to avg max temp of {forecast_data['MaxTemp_Forecast'].mean():.2f}°C.")
     if forecast_data['Rainfall_Forecast'].sum() < 500:
         policies.append(f"Suggest water conservation in {location} due to total rainfall of {forecast_data['Rainfall_Forecast'].sum():.2f}mm.")
     return policies
 
-from folium import Map, TimestampedGeoJson
 
 @app.route('/temporal_map')
 def temporal_map():
