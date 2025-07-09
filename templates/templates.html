@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climate Analysis Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            padding-top: 50px;
+        }
+        #gis-map {
+            height: 400px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Climate Analysis Dashboard</h1>
+        <p>Analyzing past climate data and predicting future trends using SARIMAX and Prophet models.</p>
+        
+        <!-- Search Section -->
+        <div class="input-group mb-3">
+            <input type="text" id="location-search" class="form-control" placeholder="Enter location">
+            <div class="input-group-append">
+                <button class="btn btn-primary" onclick="searchLocation()">Search</button>
+            </div>
+        </div>
+        
+        <div id="search-results"></div>
+
+        <!-- GIS & Temporal Mapping Section -->
+        <div id="gis-map">
+            <iframe src="/map" width="100%" height="400px" frameborder="0"></iframe>
+        </div>
+        
+        <!-- Developer Details -->
+        <h2>About the Developers</h2>
+        <ul>
+            <li>Developer 1: <strong>John Doe</strong> - Data Scientist, responsible for data analysis and model development.</li>
+            <li>Developer 2: <strong>Jane Smith</strong> - Web Developer, handled the website design and frontend development.</li>
+            <li>Developer 3: <strong>Mark Lee</strong> - GIS Specialist, managed the spatial data analysis and mapping.</li>
+        </ul>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        function searchLocation() {
+            let location = $('#location-search').val();
+            $.ajax({
+                url: '/search',
+                type: 'GET',
+                data: { location: location },
+                success: function(response) {
+                    if (response.error) {
+                        $('#search-results').html('<div class="alert alert-danger">' + response.error + '</div>');
+                    } else {
+                        $('#search-results').html(`
+                            <div class="alert alert-info">
+                                <h4>Location: ${location}</h4>
+                                <p>Max Temperature: ${response.max_temp} °C</p>
+                                <p>Min Temperature: ${response.min_temp} °C</p>
+                                <p>Average Temperature: ${response.avg_temp.toFixed(2)} °C</p>
+                                <p>Total Rainfall: ${response.rainfall} mm</p>
+                                <p>Humidity (3 PM): ${response.humidity_3pm.toFixed(2)} %</p>
+                                <p>Humidity (9 AM): ${response.humidity_9am.toFixed(2)} %</p>
+                            </div>
+                        `);
+                        
+                        // Fetch SARIMA Forecast
+                        $.ajax({
+                            url: '/forecast', // Corrected to match the Flask route
+                            type: 'GET',
+                            data: { location: location },
+                            success: function(forecastResponse) {
+                                if (Array.isArray(forecastResponse)) {
+                                    let forecastHtml = '<h5>SARIMA Forecast:</h5><ul>';
+                                    forecastResponse.forEach(function(forecast) {
+                                        forecastHtml += `<li>Date: ${new Date(forecast.Date).toLocaleDateString()}, Min Temp: ${forecast.MinTemp_Forecast.toFixed(2)} °C, Max Temp: ${forecast.MaxTemp_Forecast.toFixed(2)} °C, Rainfall: ${forecast.Rainfall_Forecast.toFixed(2)} mm</li>`;
+                                    });
+                                    forecastHtml += '</ul>';
+                                    $('#search-results').append(forecastHtml);
+                                } else {
+                                    $('#search-results').append('<p>Forecast data not available.</p>');
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
