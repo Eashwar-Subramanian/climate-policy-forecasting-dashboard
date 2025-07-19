@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Climate Forecast Dashboard</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"/>
+</head>
+<body>
+  <div class="container mt-4">
+    <h1 class="text-center mb-4">Australian Climate Forecast Dashboard</h1>
+    <div class="input-group mb-4">
+      <select id="location-input" class="form-control" aria-label="Location">
+        {% for loc in locations %}
+          <option value="{{ loc }}">{{ loc }}</option>
+        {% endfor %}
+      </select>
+      <div class="input-group-append">
+        <button class="btn btn-primary" onclick="search()">Search</button>
+      </div>
+    </div>
+
+    <div id="results"></div>
+
+    <div class="mt-5">
+      <h3>Interactive Climate Map</h3>
+      <iframe id="map-frame" src="/temporal_map" width="100%" height="500" frameborder="0"></iframe>
+    </div>
+
+    <div class="mt-5">
+      <h3>Power BI Dashboard (In Development)</h3>
+      <p class="text-center">A interactive dashboard with temperature and rainfall visuals is being developed. <a href="/powerbi" class="btn btn-secondary">Learn More</a></p>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script>
+    function search() {
+      const location = $('#location-input').val().trim();
+      $.get(`/sarima_forecast?location=${encodeURIComponent(location)}`, function(data) {
+        if (data.error) {
+          $('#results').html(`<div class="alert alert-danger">${data.error}</div>`);
+        } else {
+          let policyList = data.policies.length ? `<h5>Policy Suggestions:</h5><ul>${data.policies.map(p => `<li>${p}</li>`).join('')}</ul>` : '';
+          $('#results').html(`
+            <div class="card p-4">
+              <h4>${data.location} Climate Forecast Summary</h4>
+              <p><strong>Avg Max Temp:</strong> ${data.avg_max_temp}°C</p>
+              <p><strong>Avg Min Temp:</strong> ${data.avg_min_temp}°C</p>
+              ${policyList}
+              <h5>Forecast Chart:</h5>
+              <img src="${data.graph}" class="img-fluid" alt="${data.location} Forecast Graph"/>
+            </div>
+          `);
+        }
+        $('#map-frame').attr('src', `/temporal_map?location=${encodeURIComponent(location)}`);
+      }).fail(function() {
+        $('#results').html('<div class="alert alert-danger">Error fetching data. Ensure server is running and data is available.</div>');
+      });
+    }
+
+    $(document).ready(function() {
+      $('#map-frame').attr('src', '/temporal_map?location=Albury');
+      search(); // Load default Albury data
+    });
+  </script>
+</body>
+</html>
