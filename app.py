@@ -94,15 +94,6 @@ def validate_model(ts_data):
     except Exception:
         return None, None
 
-def suggest_policies(location, forecast_df, hist_data):
-    policies = []
-    mae, rmse = validate_model(hist_data)
-    if mae is not None:
-        policies.append(f"Validation: MAE = {mae}°C, RMSE = {rmse}°C")
-    if forecast_df['MaxTemp_Forecast'].mean() > 35 and mae is not None and mae < 2.5:
-        policies.append(f"Optional: Heatwave action plans for {location} (avg max {forecast_df['MaxTemp_Forecast'].mean():.2f}°C, MAE {mae}°C)")
-    return policies
-
 @app.route('/')
 def home():
     locations = sorted(df['Location'].unique().tolist())
@@ -119,12 +110,13 @@ def get_forecast():
     forecast_df = sarima_forecast(location)
     if forecast_df.empty:
         return jsonify({"error": f"Forecast generation failed for {location}."})
-    policies = suggest_policies(location, forecast_df, ts_data)
+    mae, rmse = validate_model(ts_data)
     return jsonify({
         "location": location,
         "avg_min_temp": round(forecast_df['MinTemp_Forecast'].mean(), 2),
         "avg_max_temp": round(forecast_df['MaxTemp_Forecast'].mean(), 2),
-        "policies": policies,
+        "mae": mae if mae is not None else "N/A",
+        "rmse": rmse if rmse is not None else "N/A",
         "graph": f"static/{location}_forecast.png"
     })
 
@@ -153,10 +145,6 @@ def temporal_map():
         }
         TimestampedGeoJson(geo_data, period='P1W', auto_play=False, loop=False).add_to(m)
     return m._repr_html_()
-
-@app.route('/powerbi')
-def powerbi_info():
-    return render_template('powerbi.html')
 
 if __name__ == "__main__":
     app.run(debug=True)
