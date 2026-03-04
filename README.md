@@ -1,18 +1,19 @@
-# Climate Analysis Dashboard
-**Government climate policy support tool with 1.2°C forecasting accuracy**
+# Australian Climate Forecast Dashboard (Flask + SARIMAX + Folium)
 
-## 🏛️ Government Use Case
-Supporting Australian climate policy decisions through:
-- **Seasonal forecasting** for drought/flood preparedness
-- **Urban planning** recommendations based on temperature trends  
-- **Agricultural planning** support with rainfall predictions
+A Flask web dashboard that generates on-demand SARIMAX forecasts for Australian locations and embeds a temporal Folium map.
 
-## 📈 Forecasting Performance
-- **Temperature MAE:** 1.2°C (industry benchmark: 1.5°C)
-- **Coverage:** Major Australian cities with historical pattern analysis
-- **Model:** SARIMA with seasonal decomposition for policy-grade accuracy
+---
 
-## 🌐 Interactive Features
-- **Location Search:** Real-time climate data for any Australian city
-- **Visual Forecasting:** 12-month ahead predictions with confidence intervals
-- **Policy Integration:** Exportable reports for government stakeholder review
+## What it does
+- Location dropdown search
+- Weekly resampling + interpolation of climate series
+- SARIMAX forecasting for MinTemp and MaxTemp
+- Forecast horizon: **26 weeks**
+- Validation: MAE/RMSE computed on MinTemp when there is at least **104 weeks** of history
+
+---
+
+## How to run
+```bash
+pip install -r requirements.txt
+python app.py
