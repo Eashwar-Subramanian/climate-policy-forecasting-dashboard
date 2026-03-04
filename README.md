@@ -17,3 +17,23 @@ A Flask web dashboard that generates on-demand SARIMAX forecasts for Australian 
 ```bash
 pip install -r requirements.txt
 python app.py
+```
+Open: http://127.0.0.1:5000
+
+Files
+
+app.py — Flask app + SARIMAX forecasting + MAE/RMSE validation
+
+index.html — UI (location dropdown + forecast results + embedded map)
+
+cleaned_climate_data.csv — prepared dataset used by the app
+
+location_coordinates.csv — latitude/longitude lookups
+
+static/ — CSS and assets
+
+Review request
+
+Open an Issue titled: Review: climate-policy-forecasting-dashboard
+Feedback wanted: code structure, endpoint clarity, and dashboard UX clarity.
+
